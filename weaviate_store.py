@@ -8,10 +8,11 @@ from uuid import UUID
 
 import weaviate
 from weaviate.classes.config import Configure, DataType, Property, VectorDistances
+from weaviate.classes.query import MetadataQuery
 
 from chunking import Chunk
 from embedder import validate_vectors
-from schemas import IndexingResult
+from schemas import IndexingResult, RetrievedChunk
 
 logger = logging.getLogger(__name__)
 _PROPERTIES = ("document_id", "source_name", "chunk_id", "section_title", "text")
@@ -32,12 +33,16 @@ class WeaviateStore:
         self.client = client
         self.collection_name = collection_name
 
-    def _collection(self, model: str, space_id: str, dimensions: int):
+    def _collection(
+        self, model: str, space_id: str, dimensions: int, create: bool = True
+    ):
         description = json.dumps(
             {"embedding_model": model, "space_id": space_id, "dimensions": dimensions},
             sort_keys=True,
         )
         if not self.client.collections.exists(self.collection_name):
+            if not create:
+                raise ValueError("Индекс не найден. Сначала запустите main.py --index")
             logger.info("Создание коллекции %s", self.collection_name)
             return self.client.collections.create(
                 name=self.collection_name,
@@ -58,6 +63,45 @@ class WeaviateStore:
                 "Задайте новое имя WEAVIATE_COLLECTION и заново создайте индекс"
             )
         return collection
+
+    def check_model(self, model: str, space_id: str) -> int:
+        if not self.client.collections.exists(self.collection_name):
+            raise ValueError("Индекс не найден. Сначала запустите main.py --index")
+        collection = self.client.collections.use(self.collection_name)
+        try:
+            config = json.loads(collection.config.get().description or "")
+        except (ValueError, TypeError) as exc:
+            raise ValueError("Индекс не содержит конфигурации эмбеддингов") from exc
+        if (
+            not isinstance(config, dict)
+            or config.get("embedding_model") != model
+            or config.get("space_id") != space_id
+        ):
+            raise ValueError("Модель запроса не совпадает с моделью индекса")
+        dimensions = config.get("dimensions")
+        if type(dimensions) is not int or dimensions <= 0:
+            raise ValueError("Индекс содержит неправильную размерность векторов")
+        return dimensions
+
+    def search(
+        self, vector: list[float], model: str, space_id: str, top_k: int = 3
+    ) -> list[RetrievedChunk]:
+        if type(top_k) is not int or top_k <= 0:
+            raise ValueError("top_k должен быть положительным целым числом")
+        dimensions = validate_vectors([vector], 1)
+        collection = self._collection(model, space_id, dimensions, create=False)
+        response = collection.query.near_vector(
+            near_vector=vector,
+            limit=top_k,
+            return_properties=list(_PROPERTIES),
+            return_metadata=MetadataQuery(distance=True),
+        )
+        result = [
+            RetrievedChunk(**obj.properties, distance=obj.metadata.distance)
+            for obj in response.objects
+        ]
+        logger.info("Поиск вернул %d фрагментов", len(result))
+        return sorted(result, key=lambda chunk: chunk.distance)
 
     def sync(
         self, chunks: list[Chunk], vectors: list[list[float]], model: str, space_id: str

@@ -46,6 +46,11 @@ class WeaviateIntegrationTests(unittest.TestCase):
                 self.assertEqual(
                     (result.inserted, result.updated, result.chunks), (0, 2, 2)
                 )
+                found = store.search([1.0, 2.0], "test-model", "test-space", top_k=1)
+                self.assertEqual(len(found), 1)
+                self.assertEqual(found[0].chunk_id, first["chunk_id"])
+                self.assertEqual(found[0].source_name, "test.txt")
+                self.assertTrue(abs(found[0].distance) < 1e-5)
 
                 changed = chunk("Обновлённое правило")
                 result = store.sync([changed], [[5.0, 6.0]], "test-model", "test-space")
@@ -74,6 +79,14 @@ class WeaviateIntegrationTests(unittest.TestCase):
             finally:
                 if client.collections.exists(name):
                     client.collections.delete(name)
+
+    def test_search_does_not_create_missing_index(self):
+        name = "MissingIndexTest" + uuid4().hex
+        with connect() as client:
+            store = WeaviateStore(client, name)
+            with self.assertRaises(ValueError):
+                store.search([1.0, 2.0], "test-model", "test-space")
+            self.assertFalse(client.collections.exists(name))
 
 
 if __name__ == "__main__":

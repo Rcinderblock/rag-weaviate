@@ -1,0 +1,72 @@
+[
+  {
+    "id": "parcel_weight",
+    "question": "Можно отправить посылку массой 12 кг?",
+    "answerable": true,
+    "expected_source": "01_service.txt",
+    "expected_facts": "Максимальный вес — 10 кг, посылка 12 кг не подходит."
+  },
+  {
+    "id": "city_price",
+    "question": "Сколько стоит отправить посылку весом 4 кг человеку в том же городе и когда она доедет?",
+    "answerable": true,
+    "expected_source": "02_tariffs.txt",
+    "expected_facts": "Тариф Город: 300 рублей, 2 рабочих дня после забора."
+  },
+  {
+    "id": "delivery_attempts",
+    "question": "Курьер дважды не застал адресата. Что произойдёт с посылкой?",
+    "answerable": true,
+    "expected_source": "03_delivery.txt",
+    "expected_facts": "После неудачной повторной попытки посылка возвращается отправителю."
+  },
+  {
+    "id": "cancel_after_pickup",
+    "question": "Посылку уже забрали. Что я заплачу, если решу отменить отправку?",
+    "answerable": true,
+    "expected_source": "04_returns.txt",
+    "expected_facts": "Обратная перевозка — 150 рублей; исходная стоимость доставки не возвращается."
+  },
+  {
+    "id": "damaged_package",
+    "question": "Упаковка пришла повреждённой: куда написать и какие доказательства нужны?",
+    "answerable": true,
+    "expected_source": "05_support.txt",
+    "expected_facts": "Чат поддержки, номер заказа, фото со всех сторон, обращение в течение 48 часов."
+  },
+  {
+    "id": "exchange_rate",
+    "question": "Какой сегодня курс доллара к рублю?",
+    "answerable": false,
+    "expected_source": null,
+    "expected_facts": "В базе нет валютных курсов."
+  },
+  {
+    "id": "compensation",
+    "question": "Сколько рублей компенсации я получу за повреждённую упаковку?",
+    "answerable": false,
+    "expected_source": null,
+    "expected_facts": "Размеры компенсаций в базе не указаны."
+  },
+  {
+    "id": "claim_review_time",
+    "question": "Сколько дней поддержка рассматривает претензию о повреждённой упаковке?",
+    "answerable": false,
+    "expected_source": null,
+    "expected_facts": "Срок рассмотрения претензии не указан; 48 часов — срок обращения."
+  },
+  {
+    "id": "support_manager",
+    "question": "Как зовут руководителя службы поддержки Клёна?",
+    "answerable": false,
+    "expected_source": null,
+    "expected_facts": "Сведений о сотрудниках нет."
+  },
+  {
+    "id": "recipe",
+    "question": "Как приготовить лазанью с грибами?",
+    "answerable": false,
+    "expected_source": null,
+    "expected_facts": "В базе нет рецептов."
+  }
+]

@@ -26,8 +26,16 @@ class DocumentLoadingTests(unittest.TestCase):
             self.assertEqual(
                 load_documents(folder),
                 [
-                    {"source_name": "a.txt", "text": "Стоимость: 300 рублей."},
-                    {"source_name": "b.TXT", "text": "Срок: 2 дня."},
+                    {
+                        "source_name": "a.txt",
+                        "text": "Стоимость: 300 рублей.",
+                        "paragraphs": ["Стоимость: 300 рублей."],
+                    },
+                    {
+                        "source_name": "b.TXT",
+                        "text": "Срок: 2 дня.",
+                        "paragraphs": ["Срок: 2 дня."],
+                    },
                 ],
             )
 
@@ -41,10 +49,30 @@ class DocumentLoadingTests(unittest.TestCase):
                 documents = load_documents(folder)
             self.assertEqual(
                 documents,
-                [{"source_name": "valid.txt", "text": "Условия доставки."}],
+                [
+                    {
+                        "source_name": "valid.txt",
+                        "text": "Условия доставки.",
+                        "paragraphs": ["Условия доставки."],
+                    }
+                ],
             )
             self.assertTrue(any("bad.txt" in message for message in captured.output))
             self.assertTrue(any("empty.txt" in message for message in captured.output))
+
+    def test_paragraph_boundaries_survive_before_empty_line_removal(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            folder = Path(temporary)
+            (folder / "document.txt").write_bytes(
+                "# Доставка\r\n \r\nПервый   абзац.\r\nПродолжение.\r\n"
+                "\u00a0\r\n\r\nВторой абзац.".encode("utf-8")
+            )
+            document = load_documents(folder)[0]
+            self.assertNotIn("\n\n", document["text"])
+            self.assertEqual(
+                document["paragraphs"],
+                ["# Доставка", "Первый абзац.\nПродолжение.", "Второй абзац."],
+            )
 
 
 if __name__ == "__main__":

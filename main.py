@@ -3,10 +3,17 @@
 import argparse
 import json
 import logging
+import os
 from pathlib import Path
 
+from dotenv import load_dotenv
+from openai import APIConnectionError, APIStatusError, OpenAIError
+from weaviate.exceptions import WeaviateBaseError
+
 from chunking import DEFAULT_CHUNK_SIZE, DEFAULT_OVERLAP, chunk_documents
+from embedder import Embedder
 from loader import load_documents
+from weaviate_store import WeaviateStore, connect
 
 
 def main() -> int:
@@ -23,10 +30,15 @@ def main() -> int:
     parser.add_argument(
         "--examples", type=int, default=3, help="Число примеров фрагментов"
     )
+    parser.add_argument(
+        "--index", action="store_true", help="Загрузить фрагменты в Weaviate"
+    )
     args = parser.parse_args()
     if args.examples < 0:
         parser.error("Число примеров не может быть отрицательным")
-    logging.basicConfig(level=logging.WARNING, format="%(levelname)s: %(message)s")
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    load_dotenv(Path(__file__).resolve().parent / ".env")
     try:
         documents = load_documents(args.folder)
         chunks = chunk_documents(documents, args.chunk_size, args.overlap)
@@ -40,6 +52,27 @@ def main() -> int:
     print(f"Размер: до {args.chunk_size} символов; перекрытие: до {args.overlap}")
     for chunk in chunks[: args.examples]:
         print(json.dumps(chunk, ensure_ascii=False, indent=2))
+    if args.index:
+        try:
+            embedder = Embedder.from_env()
+            try:
+                vectors = embedder.embed([chunk["text"] for chunk in chunks])
+            finally:
+                embedder.client.close()
+            with connect() as client:
+                store = WeaviateStore(
+                    client, os.getenv("WEAVIATE_COLLECTION", "KnowledgeChunk")
+                )
+                result = store.sync(chunks, vectors, embedder.model, embedder.space_id)
+            print(result.model_dump_json(indent=2))
+        except APIStatusError as exc:
+            parser.error(f"Сервис эмбеддингов вернул HTTP {exc.status_code}")
+        except APIConnectionError:
+            parser.error("Не удалось подключиться к сервису эмбеддингов")
+        except OpenAIError:
+            parser.error("Сервис эмбеддингов вернул некорректный ответ")
+        except (WeaviateBaseError, ValueError, RuntimeError) as exc:
+            parser.error(str(exc))
     return 0 if documents else 1
 
 

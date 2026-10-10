@@ -9,6 +9,7 @@
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
+python -m pip install -r requirements.txt
 ```
 
 ## Документы
@@ -45,8 +46,41 @@ source .venv/bin/activate
 .venv/bin/python main.py --chunk-size 600 --overlap 60 --examples 3
 ```
 
+## Индексация в Weaviate
+
+Нужен запущенный Docker. База доступна только на локальном компьютере;
+данные сохраняются в отдельном томе Docker.
+
+```bash
+docker compose up -d
+cp .env.example .env
+```
+
+В `.env` укажите `OPENAI_API_KEY`, `OPENAI_BASE_URL` и `EMBEDDING_MODEL`.
+Для OpenRouter: адрес `https://openrouter.ai/api/v1`, модель
+`openai/text-embedding-3-small`. Файл `.env` не включается в Git.
+
+```bash
+.venv/bin/python main.py --index --examples 0
+```
+
+Программа получает эмбеддинги через API, сохраняет фрагменты, векторы и метаданные
+в коллекцию `KnowledgeChunk`, затем читает их обратно и проверяет результат.
+Повторная индексация обновляет существующие записи и удаляет устаревшие фрагменты,
+в том числе из удалённых документов. Папка документов задаёт полный состав индекса.
+Пустая папка не очищает существующий индекс.
+При смене модели или сервиса задайте другое имя `WEAVIATE_COLLECTION`.
+
+Остановить базу с сохранением данных: `docker compose down`.
+
 ## Проверки
 
 ```bash
 .venv/bin/python -m unittest discover -s tests -v
+```
+
+Проверка повторной записи в запущенную локальную Weaviate (на тестовых векторах):
+
+```bash
+TEST_WEAVIATE=1 .venv/bin/python -m unittest discover -s tests -v
 ```

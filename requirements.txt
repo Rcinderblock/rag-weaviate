@@ -1,0 +1,4 @@
+weaviate-client==4.23.1
+openai==2.54.0
+pydantic==2.14.0
+python-dotenv==1.2.4

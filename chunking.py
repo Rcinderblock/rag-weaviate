@@ -4,7 +4,7 @@ import re
 from bisect import bisect_right
 from dataclasses import dataclass
 from typing import TypedDict
-from uuid import NAMESPACE_URL, UUID, uuid5
+from uuid import NAMESPACE_URL, uuid5
 
 from loader import Document
 
@@ -125,9 +125,7 @@ def chunk_documents(
             body = "\n\n".join(section.paragraphs)
             for part_index, part in enumerate(_split_body(body, body_size, overlap)):
                 text = prefix + part
-                chunk_id = uuid5(
-                    document_id, f"{section_index}:{part_index}:{text}"
-                )
+                chunk_id = uuid5(document_id, f"{section_index}:{part_index}:{text}")
                 chunks.append(
                     {
                         "document_id": str(document_id),

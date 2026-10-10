@@ -1,6 +1,7 @@
 import re
 import tempfile
 import unittest
+from itertools import pairwise
 from pathlib import Path
 from uuid import UUID
 
@@ -20,9 +21,9 @@ class ChunkingTests(unittest.TestCase):
 
     def test_short_sections_keep_related_facts_together_and_do_not_mix(self):
         documents = self.load(
-            '# Сервис\n\n## Город\n'
-            'Цена: 300 рублей. Вес: до 5 кг. Срок: 2 дня.\n\n'
-            '## Регион\nЦена: 650 рублей. Вес: до 10 кг. Срок: 3–5 дней.'
+            "# Сервис\n\n## Город\n"
+            "Цена: 300 рублей. Вес: до 5 кг. Срок: 2 дня.\n\n"
+            "## Регион\nЦена: 650 рублей. Вес: до 10 кг. Срок: 3–5 дней."
         )
         chunks = chunk_documents(documents)
         self.assertEqual(len(chunks), 2)
@@ -45,7 +46,7 @@ class ChunkingTests(unittest.TestCase):
         self.assertEqual(set(found), set(words))
         self.assertEqual(found[0], words[0])
         self.assertEqual(found[-1], words[-1])
-        for previous, current in zip(bodies, bodies[1:]):
+        for previous, current in pairwise(bodies):
             previous_words, current_words = previous.split(), current.split()
             overlap_words = [word for word in current_words if word in previous_words]
             self.assertGreater(len(overlap_words), 0)
@@ -104,9 +105,11 @@ class ChunkingTests(unittest.TestCase):
     def test_invalid_settings_have_clear_errors(self):
         documents = self.load("# Раздел\nТекст.")
         for size, overlap in [(0, 0), (-1, 0), (200, -1), (200, 100), (True, 0)]:
-            with self.subTest(size=size, overlap=overlap):
-                with self.assertRaises(ValueError):
-                    chunk_documents(documents, size, overlap)
+            with (
+                self.subTest(size=size, overlap=overlap),
+                self.assertRaises(ValueError),
+            ):
+                chunk_documents(documents, size, overlap)
         with self.assertRaisesRegex(ValueError, "заголовок"):
             chunk_documents(self.load("# " + "А" * 200 + "\nТекст."), 100, 10)
 
@@ -123,7 +126,8 @@ class ChunkingTests(unittest.TestCase):
         self.assertTrue(all(len(chunk["text"]) <= 800 for chunk in chunks))
         for document in documents:
             chunks_text = " ".join(
-                chunk["text"] for chunk in chunks
+                chunk["text"]
+                for chunk in chunks
                 if chunk["source_name"] == document["source_name"]
             )
             source_words = re.findall(r"\w+", document["text"])

@@ -89,7 +89,7 @@ def main() -> int:
                     return 1 if result.status == "invalid_output" else 0
             return 0
 
-        documents = load_documents(args.folder)
+        documents = load_documents(args.folder, strict=args.index)
         chunks = chunk_documents(documents, args.chunk_size, args.overlap)
         for document in documents:
             print(f"{document['source_name']}: {len(document['text'])} символов")

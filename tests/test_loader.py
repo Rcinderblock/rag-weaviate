@@ -74,6 +74,15 @@ class DocumentLoadingTests(unittest.TestCase):
                 ["# Доставка", "Первый абзац.\nПродолжение.", "Второй абзац."],
             )
 
+    def test_strict_loading_rejects_unreadable_and_empty_documents(self):
+        for content in [b"\xff", b" \n\t\n"]:
+            with self.subTest(content=content), tempfile.TemporaryDirectory() as name:
+                folder = Path(name)
+                (folder / "valid.txt").write_text("Правила доставки.", encoding="utf-8")
+                (folder / "broken.txt").write_bytes(content)
+                with self.assertRaisesRegex(ValueError, "broken.txt"):
+                    load_documents(folder, strict=True)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -26,7 +26,7 @@ def clean_text(text: str) -> str:
     return "\n".join(lines)
 
 
-def load_documents(folder: str | Path) -> list[Document]:
+def load_documents(folder: str | Path, *, strict: bool = False) -> list[Document]:
     """Прочитать текстовые файлы UTF-8 и вернуть очищенный текст с именем источника."""
     folder = Path(folder)
     if not folder.exists():
@@ -46,9 +46,13 @@ def load_documents(folder: str | Path) -> list[Document]:
             original = path.read_text(encoding="utf-8")
             text = clean_text(original)
         except (OSError, UnicodeError) as exc:
+            if strict:
+                raise ValueError(f"Не удалось прочитать документ: {path.name}") from exc
             logger.warning("Не удалось прочитать %s: %s", path.name, exc)
             continue
         if not text:
+            if strict:
+                raise ValueError(f"Пустой документ: {path.name}")
             logger.warning("Пустой документ пропущен: %s", path.name)
             continue
         # Сохраняем границы абзацев до удаления пустых строк из общего текста.
